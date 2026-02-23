@@ -1,0 +1,110 @@
+{% extends "base.html" %}
+
+{% block content %}
+<div class="container">
+    <!-- Header -->
+    <header class="header">
+        <h1 class="title">
+            <span class="title-hado">HADO</span>
+            <span class="title-sub">Match Extractor</span>
+        </h1>
+    </header>
+
+    <!-- State 1: Upload -->
+    <section id="section-upload" class="section active">
+        <p class="description">試合動画から自動で<br>各試合クリップを抽出します</p>
+
+        <div class="game-selector">
+            <div class="selector-buttons">
+                <button id="btn-hado" class="btn btn-game selected" onclick="selectGame('hado')">HADO</button>
+                <button id="btn-hadoworld" class="btn btn-game" onclick="selectGame('hadoworld')">HADO WORLD</button>
+            </div>
+        </div>
+
+        <input type="file" id="file-input" accept="video/mp4,video/quicktime,.mov,.mp4"
+               style="position:absolute;width:1px;height:1px;opacity:0;overflow:hidden;pointer-events:none;">
+
+        <div id="file-info" class="file-info" style="display:none;">
+            <span id="file-name" class="file-name"></span>
+            <span id="file-size" class="file-size"></span>
+        </div>
+
+        <button id="btn-select" class="btn btn-primary btn-large">
+            動画を選択
+        </button>
+
+        <!-- Upload progress (hidden until upload starts) -->
+        <div id="upload-progress" style="display:none;">
+            <p class="progress-label">アップロード中...</p>
+            <div class="progress-bar-container">
+                <div id="upload-bar" class="progress-bar"></div>
+            </div>
+            <p id="upload-detail" class="progress-detail">0%</p>
+
+            <button id="btn-cancel-upload" class="btn btn-secondary" onclick="cancelUpload()">
+                キャンセル
+            </button>
+        </div>
+
+        <p class="hint">対応形式: MOV, MP4</p>
+    </section>
+
+    <!-- State 2: Processing -->
+    <section id="section-processing" class="section">
+        <div class="status-card">
+            <p class="status-label">処理中</p>
+            <p id="processing-filename" class="status-filename"></p>
+        </div>
+
+        <p id="processing-stage" class="progress-label">準備中...</p>
+        <div class="progress-bar-container">
+            <div id="processing-bar" class="progress-bar"></div>
+        </div>
+        <p id="processing-pct" class="progress-pct">0%</p>
+
+        <p id="processing-detail" class="progress-detail"></p>
+
+        <div class="elapsed-time">
+            経過時間: <span id="elapsed-time">0:00</span>
+        </div>
+
+        <div class="log-container">
+            <p class="log-header">ログ</p>
+            <div id="log-area" class="log-area"></div>
+        </div>
+    </section>
+
+    <!-- State 3: Results -->
+    <section id="section-results" class="section">
+        <div class="status-card status-completed">
+            <p class="status-label">完了</p>
+            <p id="result-summary" class="status-summary"></p>
+            <p id="result-total-duration" class="status-detail"></p>
+        </div>
+
+        <!-- Combined download -->
+        <button id="btn-download-combined" class="btn btn-accent btn-large" onclick="downloadCombined()">
+            まとめ動画をダウンロード
+        </button>
+
+        <p class="section-divider">個別ダウンロード</p>
+
+        <div id="clips-list" class="clips-list"></div>
+
+        <button class="btn btn-secondary btn-large" onclick="resetUI()">
+            別の動画を処理する
+        </button>
+    </section>
+
+    <!-- Error state -->
+    <section id="section-error" class="section">
+        <div class="status-card status-error">
+            <p class="status-label">エラー</p>
+            <p id="error-message" class="status-summary"></p>
+        </div>
+        <button class="btn btn-secondary btn-large" onclick="resetUI()">
+            やり直す
+        </button>
+    </section>
+</div>
+{% endblock %}

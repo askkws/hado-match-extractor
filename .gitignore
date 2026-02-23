@@ -1,0 +1,31 @@
+# Python
+__pycache__/
+*.py[cod]
+*$py.class
+*.so
+.Python
+.venv/
+venv/
+ENV/
+env/
+
+# macOS
+.DS_Store
+.AppleDouble
+.LSOverride
+
+# Claude Code
+.claude/
+
+# Build artifacts
+*.app/
+HADO Match Extractor.app/
+
+# Output files
+all_matches_combined.mp4
+match_*.mp4
+clips_data.json
+
+# Temporary files
+/tmp/
+*.tmp
