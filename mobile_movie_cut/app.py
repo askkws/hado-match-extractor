@@ -27,7 +27,10 @@ from hado_detector import HadoMatchExtractor
 from hadoworld_detector import HadoWorldMatchExtractor
 
 # --- App setup ---
-BASE_DIR = Path(__file__).parent
+if getattr(sys, 'frozen', False):
+    BASE_DIR = Path(sys._MEIPASS)
+else:
+    BASE_DIR = Path(__file__).parent
 
 if sys.platform == 'darwin':
     DATA_DIR = Path.home() / "Library" / "Application Support" / "HADO Match Extractor" / "data"

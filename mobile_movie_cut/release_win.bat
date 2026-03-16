@@ -26,7 +26,7 @@ echo ========================================
 echo.
 
 REM --- 1. Build .exe ---
-echo [1/3] Building .exe ...
+echo [1/2] Building .exe ...
 call build_app_win.bat
 if errorlevel 1 (
     echo ERROR: Build failed.
@@ -34,26 +34,15 @@ if errorlevel 1 (
 )
 echo.
 
-REM --- 2. Stage files ---
-echo [2/3] Staging release files ...
-set "STAGE_DIR=%TEMP%\hado_release_%RANDOM%"
-set "APP_DIR=%STAGE_DIR%\HADO Match Extractor"
-mkdir "%APP_DIR%"
-
-REM Copy PyInstaller output
-xcopy /E /I /Q "dist\HADO Match Extractor" "%APP_DIR%"
-
-echo   Staged to: %APP_DIR%
-
-REM --- 3. Create ZIP ---
-echo [3/3] Creating ZIP ...
+REM --- 2. Create ZIP ---
+echo [2/2] Creating ZIP ...
 if not exist "%RELEASE_DIR%" mkdir "%RELEASE_DIR%"
 
-REM Use PowerShell to create ZIP
-powershell -NoProfile -Command "Compress-Archive -Path '%APP_DIR%' -DestinationPath '%RELEASE_DIR%\%ZIP_NAME%' -Force"
+REM Use PowerShell to create ZIP (single exe only)
+powershell -NoProfile -Command "Compress-Archive -Path 'dist\HADO Match Extractor.exe' -DestinationPath '%RELEASE_DIR%\%ZIP_NAME%' -Force"
 if errorlevel 1 (
     echo ERROR: ZIP creation failed.
-    goto :CLEANUP
+    goto :END
 )
 
 echo.
@@ -67,9 +56,6 @@ echo  gh release create v%VERSION% ^
 echo    "%RELEASE_DIR%\%ZIP_NAME%" ^
 echo    --title "v%VERSION%" --notes "Release v%VERSION%"
 echo ========================================
-
-:CLEANUP
-if exist "%STAGE_DIR%" rmdir /s /q "%STAGE_DIR%"
 
 :END
 popd

@@ -51,7 +51,7 @@ echo.
 
 REM --- 4. PyInstaller ---
 echo Building .exe ...
-.venv\Scripts\pyinstaller --noconfirm --windowed --name "HADO Match Extractor" --add-data "templates;templates" --add-data "static;static" --add-data "app.py;." --add-data "extractor.py;." --add-data "hado_detector.py;." --add-data "hadoworld_detector.py;." --add-binary "ffmpeg\ffmpeg.exe;ffmpeg" --add-binary "ffmpeg\ffprobe.exe;ffmpeg" --hidden-import uvicorn.logging --hidden-import uvicorn.loops --hidden-import uvicorn.loops.auto --hidden-import uvicorn.protocols --hidden-import uvicorn.protocols.http --hidden-import uvicorn.protocols.http.auto --hidden-import uvicorn.protocols.websockets --hidden-import uvicorn.protocols.websockets.auto --hidden-import uvicorn.lifespan --hidden-import uvicorn.lifespan.on --hidden-import cv2 main.py
+.venv\Scripts\pyinstaller --noconfirm --onefile --windowed --name "HADO Match Extractor" --add-data "templates;templates" --add-data "static;static" --add-data "app.py;." --add-data "extractor.py;." --add-data "hado_detector.py;." --add-data "hadoworld_detector.py;." --add-binary "ffmpeg\ffmpeg.exe;ffmpeg" --add-binary "ffmpeg\ffprobe.exe;ffmpeg" --hidden-import uvicorn.logging --hidden-import uvicorn.loops --hidden-import uvicorn.loops.auto --hidden-import uvicorn.protocols --hidden-import uvicorn.protocols.http --hidden-import uvicorn.protocols.http.auto --hidden-import uvicorn.protocols.websockets --hidden-import uvicorn.protocols.websockets.auto --hidden-import uvicorn.lifespan --hidden-import uvicorn.lifespan.on --hidden-import cv2 main.py
 if errorlevel 1 (
     echo.
     echo ERROR: Build failed.
@@ -62,7 +62,7 @@ echo.
 echo ========================================
 echo  Build complete!
 echo.
-echo  Output: dist\HADO Match Extractor\HADO Match Extractor.exe
+echo  Output: dist\HADO Match Extractor.exe
 echo ========================================
 
 :END

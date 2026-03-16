@@ -1,133 +1,101 @@
 #!/bin/bash
-# Build macOS .app bundle for HADO Match Extractor
+# Build macOS .app bundle for HADO Match Extractor (PyInstaller)
+# The .app bundle is self-contained — no external folders needed.
 # Usage: bash build_app.sh
 
 set -e
 
 SCRIPT_DIR="$(cd "$(dirname "$0")" && pwd)"
-PROJECT_ROOT="$(dirname "$SCRIPT_DIR")"
 APP_NAME="HADO Match Extractor"
-APP_PATH="$PROJECT_ROOT/$APP_NAME.app"
 
 echo "Building $APP_NAME.app ..."
 
-# Check ffmpeg binaries
-if [ ! -f "$SCRIPT_DIR/ffmpeg/ffmpeg" ] && [ ! -f "$SCRIPT_DIR/ffmpeg/ffmpeg.arm64" ]; then
-    echo "ERROR: ffmpeg/ffmpeg が見つかりません。"
-    echo "ffmpeg/README.md を参照してバイナリを配置してください。"
-    exit 1
-fi
-if [ ! -f "$SCRIPT_DIR/ffmpeg/ffprobe" ] && [ ! -f "$SCRIPT_DIR/ffmpeg/ffprobe.arm64" ]; then
-    echo "ERROR: ffmpeg/ffprobe が見つかりません。"
-    echo "ffmpeg/README.md を参照してバイナリを配置してください。"
-    exit 1
-fi
-echo "ffmpeg found in ffmpeg/"
-
-# Clean previous build
-rm -rf "$APP_PATH"
-
-# Create .app bundle structure
-mkdir -p "$APP_PATH/Contents/MacOS"
-mkdir -p "$APP_PATH/Contents/Resources"
-
-# --- App icon ---
-if [ -f "$SCRIPT_DIR/AppIcon.icns" ]; then
-    cp "$SCRIPT_DIR/AppIcon.icns" "$APP_PATH/Contents/Resources/AppIcon.icns"
-fi
-
-# --- Info.plist ---
-cat > "$APP_PATH/Contents/Info.plist" << 'PLIST'
-<?xml version="1.0" encoding="UTF-8"?>
-<!DOCTYPE plist PUBLIC "-//Apple//DTD PLIST 1.0//EN"
-  "http://www.apple.com/DTDs/PropertyList-1.0.dtd">
-<plist version="1.0">
-<dict>
-    <key>CFBundleName</key>
-    <string>HADO Match Extractor</string>
-    <key>CFBundleDisplayName</key>
-    <string>HADO Match Extractor</string>
-    <key>CFBundleIdentifier</key>
-    <string>com.hado.match-extractor</string>
-    <key>CFBundleVersion</key>
-    <string>1.0</string>
-    <key>CFBundlePackageType</key>
-    <string>APPL</string>
-    <key>CFBundleExecutable</key>
-    <string>launcher</string>
-    <key>CFBundleIconFile</key>
-    <string>AppIcon</string>
-    <key>LSUIElement</key>
-    <false/>
-</dict>
-</plist>
-PLIST
-
-# --- Launcher script ---
-cat > "$APP_PATH/Contents/MacOS/launcher" << 'LAUNCHER'
-#!/bin/bash
-# HADO Match Extractor - macOS App Launcher
-
-APP_DIR="$(cd "$(dirname "$0")/../../.." && pwd)"
-PROJECT_DIR="$APP_DIR/mobile_movie_cut"
-
-if [ ! -d "$PROJECT_DIR" ]; then
-    osascript -e 'display dialog "エラー: mobile_movie_cut フォルダが見つかりません。\n.app と同じフォルダに mobile_movie_cut を配置してください。" buttons {"OK"} default button "OK" with icon stop with title "HADO Match Extractor"'
-    exit 1
-fi
-
-cd "$PROJECT_DIR"
-
-# Bundled ffmpeg takes priority, then Homebrew, then system
-export PATH="$PROJECT_DIR/ffmpeg:/opt/homebrew/bin:/usr/local/bin:/usr/bin:/bin:$PATH"
-
-# Log file for debugging startup failures
-LOG="/tmp/hado_launcher.log"
-echo "=== HADO Launcher $(date) ===" > "$LOG"
-
-# Find an arm64-native python3: prefer Homebrew, then fall back to PATH
-PYTHON3=""
-for candidate in \
-    /opt/homebrew/bin/python3 \
-    /opt/homebrew/bin/python3.13 \
-    /opt/homebrew/bin/python3.12 \
-    /opt/homebrew/bin/python3.11 \
-    /opt/homebrew/bin/python3.10; do
-    if [ -x "$candidate" ]; then
-        PYTHON3="$candidate"
+# --- Check ffmpeg binaries ---
+FFMPEG_BIN=""
+FFPROBE_BIN=""
+for f in ffmpeg ffmpeg.arm64; do
+    if [ -f "$SCRIPT_DIR/ffmpeg/$f" ]; then
+        FFMPEG_BIN="$SCRIPT_DIR/ffmpeg/$f"
         break
     fi
 done
-if [ -z "$PYTHON3" ]; then
-    PYTHON3="$(which python3)"
-fi
-echo "PYTHON3=$PYTHON3" >> "$LOG"
+for f in ffprobe ffprobe.arm64; do
+    if [ -f "$SCRIPT_DIR/ffmpeg/$f" ]; then
+        FFPROBE_BIN="$SCRIPT_DIR/ffmpeg/$f"
+        break
+    fi
+done
 
-# Create venv if it doesn't exist yet
-VENV_DIR="$PROJECT_DIR/.venv"
+if [ -z "$FFMPEG_BIN" ]; then
+    echo "ERROR: ffmpeg binary not found in ffmpeg/"
+    echo "See ffmpeg/README.md for download instructions."
+    exit 1
+fi
+if [ -z "$FFPROBE_BIN" ]; then
+    echo "ERROR: ffprobe binary not found in ffmpeg/"
+    echo "See ffmpeg/README.md for download instructions."
+    exit 1
+fi
+echo "ffmpeg:  $FFMPEG_BIN"
+echo "ffprobe: $FFPROBE_BIN"
+
+# --- venv ---
+VENV_DIR="$SCRIPT_DIR/.venv"
 if [ ! -d "$VENV_DIR" ]; then
-    echo "Creating venv..." >> "$LOG"
-    "$PYTHON3" -m venv "$VENV_DIR" >> "$LOG" 2>&1
+    echo "Creating virtual environment..."
+    python3 -m venv "$VENV_DIR"
 fi
 
-# Install dependencies into the venv
-"$VENV_DIR/bin/pip" install -q -r requirements.txt >> "$LOG" 2>&1
+echo "Installing dependencies..."
+"$VENV_DIR/bin/pip" install -q --no-cache-dir -r "$SCRIPT_DIR/requirements.txt"
+echo "Done."
+echo ""
 
-# Run the desktop app using the venv Python (blocks until window is closed)
-"$VENV_DIR/bin/python" main.py >> "$LOG" 2>&1
-EXIT_CODE=$?
+# --- Clean previous build ---
+rm -rf "$SCRIPT_DIR/dist" "$SCRIPT_DIR/build"
 
-if [ $EXIT_CODE -ne 0 ]; then
-    osascript -e "display dialog \"エラー: アプリの起動に失敗しました。\n\n詳細はログを確認: $LOG\" buttons {\"OK\"} default button \"OK\" with icon stop with title \"HADO Match Extractor\""
+# --- Icon flag ---
+ICON_FLAG=""
+if [ -f "$SCRIPT_DIR/AppIcon.icns" ]; then
+    ICON_FLAG="--icon $SCRIPT_DIR/AppIcon.icns"
 fi
-LAUNCHER
 
-# Make launcher executable
-chmod +x "$APP_PATH/Contents/MacOS/launcher"
+# --- PyInstaller ---
+# macOS: --windowed produces a .app bundle (self-contained directory)
+# --onefile is not compatible with macOS .app bundles
+echo "Running PyInstaller..."
+"$VENV_DIR/bin/pyinstaller" \
+    --noconfirm \
+    --windowed \
+    --name "$APP_NAME" \
+    --add-data "templates:templates" \
+    --add-data "static:static" \
+    --add-data "app.py:." \
+    --add-data "extractor.py:." \
+    --add-data "hado_detector.py:." \
+    --add-data "hadoworld_detector.py:." \
+    --add-binary "$FFMPEG_BIN:ffmpeg" \
+    --add-binary "$FFPROBE_BIN:ffmpeg" \
+    $ICON_FLAG \
+    --hidden-import uvicorn.logging \
+    --hidden-import uvicorn.loops \
+    --hidden-import uvicorn.loops.auto \
+    --hidden-import uvicorn.protocols \
+    --hidden-import uvicorn.protocols.http \
+    --hidden-import uvicorn.protocols.http.auto \
+    --hidden-import uvicorn.protocols.websockets \
+    --hidden-import uvicorn.protocols.websockets.auto \
+    --hidden-import uvicorn.lifespan \
+    --hidden-import uvicorn.lifespan.on \
+    --hidden-import cv2 \
+    --workpath "$SCRIPT_DIR/build" \
+    --distpath "$SCRIPT_DIR/dist" \
+    --specpath "$SCRIPT_DIR" \
+    "$SCRIPT_DIR/main.py"
 
 echo ""
-echo "Done! Created: $APP_PATH"
+echo "========================================"
+echo "  Build complete!"
 echo ""
-echo "使い方:"
-echo "  \"$APP_NAME.app\" をダブルクリックして起動"
-echo ""
+echo "  Output: $SCRIPT_DIR/dist/$APP_NAME.app"
+echo "========================================"
