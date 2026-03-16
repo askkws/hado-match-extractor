@@ -14,6 +14,10 @@ import threading
 import time
 import urllib.request
 
+if sys.platform != 'darwin':
+    import tkinter as tk
+    from tkinter import filedialog
+
 import uvicorn
 import webview
 
@@ -44,19 +48,39 @@ class Api:
         self._port = port
 
     def pick_file(self):
-        """Open a native macOS file picker via osascript and return selected file info."""
+        """Open a native file picker and return selected file info."""
         try:
-            result = subprocess.run(
-                [
-                    'osascript', '-e',
-                    'POSIX path of (choose file of type {"mp4", "mov"}'
-                    ' with prompt "動画を選択してください")',
-                ],
-                capture_output=True,
-                text=True,
-            )
-            if result.returncode == 0:
-                path = result.stdout.strip()
+            if sys.platform == 'darwin':
+                result = subprocess.run(
+                    [
+                        'osascript', '-e',
+                        'POSIX path of (choose file of type {"mp4", "mov"}'
+                        ' with prompt "動画を選択してください")',
+                    ],
+                    capture_output=True,
+                    text=True,
+                )
+                if result.returncode == 0:
+                    path = result.stdout.strip()
+                    if path and os.path.exists(path):
+                        return {
+                            'path': path,
+                            'name': os.path.basename(path),
+                            'size': os.path.getsize(path),
+                        }
+            else:
+                # Windows: tkinter file dialog
+                root = tk.Tk()
+                root.withdraw()
+                root.attributes('-topmost', True)
+                path = filedialog.askopenfilename(
+                    title="動画を選択してください",
+                    filetypes=[
+                        ("動画ファイル", "*.mp4 *.mov"),
+                        ("すべてのファイル", "*.*"),
+                    ],
+                )
+                root.destroy()
                 if path and os.path.exists(path):
                     return {
                         'path': path,
@@ -76,21 +100,36 @@ class Api:
                 data = json.loads(resp.read())
             src_path = data['path']
 
-            # Show native save dialog
-            result = subprocess.run(
-                [
-                    'osascript', '-e',
-                    f'POSIX path of (choose file name'
-                    f' with prompt "保存先を選択してください"'
-                    f' default name "{filename}")',
-                ],
-                capture_output=True,
-                text=True,
-            )
-            if result.returncode != 0:
-                return None  # user cancelled
+            if sys.platform == 'darwin':
+                # macOS: native save dialog via osascript
+                result = subprocess.run(
+                    [
+                        'osascript', '-e',
+                        f'POSIX path of (choose file name'
+                        f' with prompt "保存先を選択してください"'
+                        f' default name "{filename}")',
+                    ],
+                    capture_output=True,
+                    text=True,
+                )
+                if result.returncode != 0:
+                    return None  # user cancelled
+                save_path = result.stdout.strip()
+            else:
+                # Windows: tkinter save dialog
+                root = tk.Tk()
+                root.withdraw()
+                root.attributes('-topmost', True)
+                save_path = filedialog.asksaveasfilename(
+                    title="保存先を選択してください",
+                    defaultextension=".mp4",
+                    initialfile=filename,
+                    filetypes=[("MP4ファイル", "*.mp4")],
+                )
+                root.destroy()
+                if not save_path:
+                    return None  # user cancelled
 
-            save_path = result.stdout.strip()
             if os.path.exists(save_path):
                 os.remove(save_path)
             shutil.copy2(src_path, save_path)
@@ -101,11 +140,18 @@ class Api:
 
 
 def main():
+    # PyInstaller frozen exe: change cwd to exe directory
+    if getattr(sys, 'frozen', False):
+        os.chdir(os.path.dirname(sys.executable))
+
     port = _find_free_port()
+
+    # Direct import for PyInstaller compatibility (string "app:app" won't resolve in frozen exe)
+    from app import app as fastapi_app
 
     # Start FastAPI/uvicorn in a daemon thread
     config = uvicorn.Config(
-        "app:app",
+        fastapi_app,
         host="127.0.0.1",
         port=port,
         timeout_keep_alive=300,

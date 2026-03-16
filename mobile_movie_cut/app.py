@@ -8,6 +8,8 @@ import asyncio
 import json
 import os
 import shutil
+import sys
+import tempfile
 import time
 import traceback
 import uuid
@@ -26,7 +28,12 @@ from hadoworld_detector import HadoWorldMatchExtractor
 
 # --- App setup ---
 BASE_DIR = Path(__file__).parent
-DATA_DIR = Path.home() / "Library" / "Application Support" / "HADO Match Extractor" / "data"
+
+if sys.platform == 'darwin':
+    DATA_DIR = Path.home() / "Library" / "Application Support" / "HADO Match Extractor" / "data"
+else:
+    _local = os.environ.get("LOCALAPPDATA", str(Path.home() / "AppData" / "Local"))
+    DATA_DIR = Path(_local) / "HADO Match Extractor" / "data"
 
 app = FastAPI(title="HADO Match Extractor")
 app.mount("/static", StaticFiles(directory=str(BASE_DIR / "static")), name="static")
@@ -41,7 +48,10 @@ is_processing = False
 # --- Startup ---
 @app.on_event("startup")
 async def startup_event():
-    """Clean old data on startup."""
+    """Clean old data on startup. Add bundled ffmpeg to PATH if present."""
+    ffmpeg_dir = BASE_DIR / "ffmpeg"
+    if ffmpeg_dir.is_dir():
+        os.environ["PATH"] = str(ffmpeg_dir) + os.pathsep + os.environ.get("PATH", "")
     if DATA_DIR.exists():
         shutil.rmtree(DATA_DIR, ignore_errors=True)
     DATA_DIR.mkdir(parents=True, exist_ok=True)
@@ -192,14 +202,14 @@ async def _run_extraction(job_id: str):
             extractor = HadoWorldMatchExtractor(
                 video_path=job["file_path"],
                 output_dir=job["output_dir"],
-                temp_dir=f"/tmp/hado_extraction_{job_id}",
+                temp_dir=os.path.join(tempfile.gettempdir(), f"hado_extraction_{job_id}"),
                 progress_callback=progress_callback,
             )
         else:
             extractor = HadoMatchExtractor(
                 video_path=job["file_path"],
                 output_dir=job["output_dir"],
-                temp_dir=f"/tmp/hado_extraction_{job_id}",
+                temp_dir=os.path.join(tempfile.gettempdir(), f"hado_extraction_{job_id}"),
                 progress_callback=progress_callback,
             )
 

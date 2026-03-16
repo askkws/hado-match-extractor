@@ -5,8 +5,11 @@ Optimized: uses OpenCV for direct video reading (no PNG file I/O).
 """
 
 import json
+import os
 import shutil
 import subprocess
+import sys
+import tempfile
 
 import cv2
 import numpy as np
@@ -18,8 +21,10 @@ class HadoMatchExtractor(BaseMatchExtractor):
     score_buffer = 2.5
     detection_label = "score detected"
 
-    def __init__(self, video_path, output_dir=".", temp_dir="/tmp/hado_extraction",
+    def __init__(self, video_path, output_dir=".", temp_dir=None,
                  progress_callback=None):
+        if temp_dir is None:
+            temp_dir = os.path.join(tempfile.gettempdir(), "hado_extraction")
         super().__init__(video_path, output_dir, temp_dir, progress_callback)
 
         # Detection thresholds
@@ -196,10 +201,14 @@ class HadoMatchExtractor(BaseMatchExtractor):
         video reading instead of PNG file I/O for major speedup.
         """
         if not shutil.which("ffprobe"):
+            if sys.platform == 'darwin':
+                install_hint = "  brew install ffmpeg"
+            else:
+                install_hint = "  https://ffmpeg.org/download.html からダウンロードしてPATHに追加してください"
             raise RuntimeError(
                 "ffprobe が見つかりません。\n"
-                "ターミナルで以下を実行してインストールしてください:\n"
-                "  brew install ffmpeg"
+                "以下の方法でインストールしてください:\n"
+                f"{install_hint}"
             )
 
         self.setup_directories()

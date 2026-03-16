@@ -5,8 +5,11 @@ Subclasses implement detect_stats_screens() and detect_score_display().
 """
 
 import json
+import os
 import shutil
 import subprocess
+import sys
+import tempfile
 from pathlib import Path
 
 
@@ -15,8 +18,10 @@ class BaseMatchExtractor:
     score_buffer = 2.5
     detection_label = "score detected"
 
-    def __init__(self, video_path, output_dir=".", temp_dir="/tmp/hado_extraction",
+    def __init__(self, video_path, output_dir=".", temp_dir=None,
                  progress_callback=None):
+        if temp_dir is None:
+            temp_dir = os.path.join(tempfile.gettempdir(), "hado_extraction")
         self.video_path = Path(video_path)
         self.output_dir = Path(output_dir)
         self.temp_dir = Path(temp_dir)
@@ -236,10 +241,14 @@ class BaseMatchExtractor:
     def run(self, cleanup=True, preset="ultrafast"):
         """Run the full extraction pipeline."""
         if not shutil.which("ffprobe"):
+            if sys.platform == 'darwin':
+                install_hint = "  brew install ffmpeg"
+            else:
+                install_hint = "  https://ffmpeg.org/download.html からダウンロードしてPATHに追加してください"
             raise RuntimeError(
                 "ffprobe が見つかりません。\n"
-                "ターミナルで以下を実行してインストールしてください:\n"
-                "  brew install ffmpeg"
+                "以下の方法でインストールしてください:\n"
+                f"{install_hint}"
             )
 
         self.setup_directories()

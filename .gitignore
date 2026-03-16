@@ -20,11 +20,17 @@ env/
 # Build artifacts
 *.app/
 HADO Match Extractor.app/
+dist/
+build/
+*.spec
+releases/
 
 # Output files
 all_matches_combined.mp4
 match_*.mp4
 clips_data.json
+output_test/
+test_output*/
 
 # Temporary files
 /tmp/

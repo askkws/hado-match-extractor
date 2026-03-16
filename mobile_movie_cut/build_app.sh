@@ -11,6 +11,19 @@ APP_PATH="$PROJECT_ROOT/$APP_NAME.app"
 
 echo "Building $APP_NAME.app ..."
 
+# Check ffmpeg binaries
+if [ ! -f "$SCRIPT_DIR/ffmpeg/ffmpeg" ] && [ ! -f "$SCRIPT_DIR/ffmpeg/ffmpeg.arm64" ]; then
+    echo "ERROR: ffmpeg/ffmpeg が見つかりません。"
+    echo "ffmpeg/README.md を参照してバイナリを配置してください。"
+    exit 1
+fi
+if [ ! -f "$SCRIPT_DIR/ffmpeg/ffprobe" ] && [ ! -f "$SCRIPT_DIR/ffmpeg/ffprobe.arm64" ]; then
+    echo "ERROR: ffmpeg/ffprobe が見つかりません。"
+    echo "ffmpeg/README.md を参照してバイナリを配置してください。"
+    exit 1
+fi
+echo "ffmpeg found in ffmpeg/"
+
 # Clean previous build
 rm -rf "$APP_PATH"
 
@@ -65,8 +78,8 @@ fi
 
 cd "$PROJECT_DIR"
 
-# Always ensure Homebrew binaries are in PATH (needed for ffmpeg/ffprobe in subprocesses)
-export PATH="/opt/homebrew/bin:/usr/local/bin:/usr/bin:/bin:$PATH"
+# Bundled ffmpeg takes priority, then Homebrew, then system
+export PATH="$PROJECT_DIR/ffmpeg:/opt/homebrew/bin:/usr/local/bin:/usr/bin:/bin:$PATH"
 
 # Log file for debugging startup failures
 LOG="/tmp/hado_launcher.log"
